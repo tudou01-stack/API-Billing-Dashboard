@@ -141,3 +141,46 @@ test('invalid import is rejected and never mutates the input state', () => {
   assert.throws(() => api.validateImport({ version: 2, channels: [] }), /版本/);
   assert.equal(before.settings.lowBalanceThreshold, 99);
 });
+
+test('trend series returns every day including zero-spend days', () => {
+  const api = loadApp();
+  const now = new Date(2026, 6, 11, 12, 0).getTime();
+  const state = api.createDefaultState();
+  state.spendingRecords.push({ id: '1', channelId: 'a', type: 'auto_diff', amount: 3, currency: 'USD', timestamp: now });
+  const series = api.buildTrendSeries(state, 7, now);
+  assert.equal(series.length, 7);
+  assert.equal(series.at(-1).total, 3);
+  assert.equal(series.filter(item => item.total === 0).length, 6);
+});
+
+test('channel share data totals spending and ignores recharges', () => {
+  const api = loadApp();
+  const state = api.createDefaultState();
+  state.channels.push({ id: 'a', name: 'Alpha' }, { id: 'b', name: 'Beta' });
+  state.spendingRecords.push(
+    { id: '1', channelId: 'a', type: 'auto_diff', amount: 2, currency: 'USD', timestamp: 1 },
+    { id: '2', channelId: 'b', type: 'manual_adjust', amount: 3, currency: 'USD', timestamp: 2 },
+    { id: '3', channelId: 'b', type: 'manual_recharge', amount: 99, currency: 'USD', timestamp: 3 }
+  );
+  const shares = api.buildChannelShares(state);
+  assert.deepEqual(Array.from(shares, item => ({ name: item.name, amount: item.amount })), [
+    { name: 'Beta', amount: 3 }, { name: 'Alpha', amount: 2 }
+  ]);
+});
+
+test('CSV serializer safely quotes commas, quotes, and formulas', () => {
+  const api = loadApp();
+  assert.equal(api.csvCell('a,b'), '"a,b"');
+  assert.equal(api.csvCell('a"b'), '"a""b"');
+  assert.equal(api.csvCell('=SUM(A1:A2)'), "'=SUM(A1:A2)");
+});
+
+test('statistics and log exports exclude keys while full backup retains them', () => {
+  const api = loadApp();
+  const state = api.createDefaultState();
+  state.channels.push({ id: 'a', name: 'Alpha', platformType: 'custom', apiKey: 'sk-private-key' });
+  state.logs.push({ id: 'l', timestamp: 1, level: 'error', category: 'connection_test', channelId: 'a', message: 'safe', detail: {} });
+  assert.equal(api.serializeStatisticsJson(state).includes('sk-private-key'), false);
+  assert.equal(api.serializeLogsText(state.logs).includes('sk-private-key'), false);
+  assert.equal(api.serializeFullBackup(state).includes('sk-private-key'), true);
+});
