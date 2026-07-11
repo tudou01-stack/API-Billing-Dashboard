@@ -245,9 +245,156 @@
       return results;
     }
 
+    function makeId() {
+      return globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function redactSecrets(value, secrets = []) {
+      let text = String(value ?? '');
+      for (const secret of secrets.filter(Boolean)) {
+        const escaped = String(secret).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        text = text.replace(new RegExp(escaped, 'g'), '••••');
+      }
+      return text
+        .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, 'Bearer ••••')
+        .replace(/sk-[A-Za-z0-9_-]{4,}/gi, 'sk-••••');
+    }
+
+    function sanitizeLogValue(value, secrets) {
+      if (typeof value === 'string') return redactSecrets(value, secrets);
+      if (Array.isArray(value)) return value.map(item => sanitizeLogValue(item, secrets));
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeLogValue(item, secrets)]));
+      }
+      return value;
+    }
+
+    function appendLog(state, entry, secrets = []) {
+      state.logs.push({
+        id: entry.id || makeId(),
+        timestamp: entry.timestamp ?? Date.now(),
+        level: ['info', 'warn', 'error'].includes(entry.level) ? entry.level : 'info',
+        category: entry.category || 'settings_change',
+        channelId: entry.channelId || '',
+        message: redactSecrets(entry.message || '', secrets),
+        detail: sanitizeLogValue(entry.detail || {}, secrets)
+      });
+      if (state.logs.length > 1000) state.logs.splice(0, state.logs.length - 1000);
+      return state.logs[state.logs.length - 1];
+    }
+
+    function roundAmount(value) {
+      return Math.round((value + Number.EPSILON) * 1e12) / 1e12;
+    }
+
+    function recordSuccessfulBalance(state, channel, result, now = Date.now()) {
+      const balance = safeNumber(result.balance);
+      const currency = String(result.currency || '').toUpperCase();
+      if (balance === null || !currency) throw new DashboardError('parse', '余额不是有效数值');
+      const previous = state.balanceSnapshots
+        .filter(item => item.channelId === channel.id && item.currency === currency)
+        .sort((a, b) => b.timestamp - a.timestamp)[0];
+      const snapshot = { channelId: channel.id, timestamp: now, balance, currency };
+      state.balanceSnapshots.push(snapshot);
+      const channelIndexes = state.balanceSnapshots
+        .map((item, index) => item.channelId === channel.id ? index : -1)
+        .filter(index => index >= 0);
+      if (channelIndexes.length > 200) {
+        const remove = new Set(channelIndexes.slice(0, channelIndexes.length - 200));
+        state.balanceSnapshots = state.balanceSnapshots.filter((_, index) => !remove.has(index));
+      }
+      channel.lastBalance = balance;
+      channel.lastCurrency = currency;
+      channel.lastRefreshAt = now;
+      channel.lastAvailability = result.isAvailable !== false;
+      channel.lastAdditionalBalances = Array.isArray(result.additionalBalances) ? clone(result.additionalBalances) : [];
+      channel.status = result.isAvailable === false ? 'error' : 'ok';
+      channel.lastError = result.isAvailable === false ? '当前不可用于调用' : '';
+      channel.consecutiveFailCount = 0;
+      channel.updatedAt = now;
+      if (!previous) return { snapshot, record: null };
+      const difference = roundAmount(previous.balance - balance);
+      if (difference === 0) return { snapshot, record: null };
+      const record = {
+        id: makeId(), channelId: channel.id,
+        type: difference > 0 ? 'auto_diff' : 'manual_recharge',
+        amount: Math.abs(difference), currency, timestamp: now,
+        note: difference > 0 ? '根据相邻成功余额自动估算' : '余额增加，自动识别为充值或赠金'
+      };
+      state.spendingRecords.push(record);
+      return { snapshot, record };
+    }
+
+    function convertCurrency(amount, from, to, cnyPerUsd) {
+      const value = safeNumber(amount);
+      const rate = safeNumber(cnyPerUsd);
+      const source = String(from || '').toUpperCase();
+      const target = String(to || '').toUpperCase();
+      if (value === null || !['USD', 'CNY'].includes(source) || !['USD', 'CNY'].includes(target)) return null;
+      if (source === target) return value;
+      if (rate === null || rate <= 0) return null;
+      return source === 'USD' ? value * rate : value / rate;
+    }
+
+    function sameLocalDay(left, right) {
+      return left.getFullYear() === right.getFullYear()
+        && left.getMonth() === right.getMonth()
+        && left.getDate() === right.getDate();
+    }
+
+    function summarize(state, now = Date.now()) {
+      const target = state.settings.defaultCurrency;
+      const rate = state.settings.cnyPerUsd;
+      const current = new Date(now);
+      const summary = { totalBalance: 0, totalSpend: 0, todaySpend: 0, monthSpend: 0, unknownCurrencies: [] };
+      const unknown = new Set();
+      for (const channel of state.channels) {
+        if (safeNumber(channel.lastBalance) === null || !channel.lastCurrency) continue;
+        const converted = convertCurrency(channel.lastBalance, channel.lastCurrency, target, rate);
+        if (converted === null) unknown.add(channel.lastCurrency);
+        else summary.totalBalance += converted;
+      }
+      for (const record of state.spendingRecords) {
+        if (!['auto_diff', 'manual_adjust'].includes(record.type)) continue;
+        const converted = convertCurrency(record.amount, record.currency, target, rate);
+        if (converted === null) { unknown.add(record.currency); continue; }
+        const time = new Date(record.timestamp);
+        summary.totalSpend += converted;
+        if (time.getFullYear() === current.getFullYear() && time.getMonth() === current.getMonth()) {
+          summary.monthSpend += converted;
+        }
+        if (sameLocalDay(time, current)) summary.todaySpend += converted;
+      }
+      summary.unknownCurrencies = Array.from(unknown);
+      for (const key of ['totalBalance', 'totalSpend', 'todaySpend', 'monthSpend']) summary[key] = roundAmount(summary[key]);
+      return summary;
+    }
+
+    function validateImport(input) {
+      if (!input || typeof input !== 'object') throw new DashboardError('import', '备份内容不是有效对象');
+      if (input.version !== 1) throw new DashboardError('import', '备份版本不受支持');
+      for (const key of ['channels', 'balanceSnapshots', 'spendingRecords', 'logs']) {
+        if (input[key] !== undefined && !Array.isArray(input[key])) throw new DashboardError('import', `备份字段 ${key} 格式错误`);
+      }
+      return normalizeState(clone(input));
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? validateImport(JSON.parse(raw)) : createDefaultState();
+      } catch { return createDefaultState(); }
+    }
+
+    function saveState(state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
     globalThis.__API_DASHBOARD_TEST__ = {
       createDefaultState, normalizeState, safeNumber, resolveJsonPath,
-      buildRequest, parsePlatformBalance, fetchChannel, runPool, DashboardError
+      buildRequest, parsePlatformBalance, fetchChannel, runPool, DashboardError,
+      redactSecrets, appendLog, recordSuccessfulBalance, convertCurrency,
+      summarize, validateImport, loadState, saveState
     };
   </script>
 </body>
