@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>API 余额台</title>
+  <style>
+    :root {
+      --canvas:#f2f4f3; --surface:#fff; --ink:#17201d; --muted:#66706c;
+      --border:#dde2df; --primary:#b8ea63; --positive:#1e8a5a;
+      --warning:#b56a16; --danger:#c54343; --info:#376dce;
+      --radius-control:10px; --radius-panel:18px; --shadow:0 10px 30px rgba(23,32,29,.06);
+      font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--ink); background:var(--canvas); font-synthesis:none;
+    }
+    *{box-sizing:border-box} body{margin:0;background:var(--canvas);color:var(--ink)}
+    button,input,select,textarea{font:inherit} button{min-height:44px}
+    .safety-banner{min-height:34px;background:var(--ink);color:#fff;padding:7px 24px;font-size:13px}
+    .app-shell{display:grid;grid-template-columns:224px 1fr;min-height:calc(100vh - 34px)}
+    .sidebar{background:#fff;border-right:1px solid var(--border);padding:28px 24px}
+    .brand{font-size:18px;font-weight:750}.nav-list{display:grid;gap:8px;margin-top:32px}
+    .nav-button{border:0;background:transparent;text-align:left;border-radius:10px;padding:0 14px;color:var(--muted);font-size:13px;font-weight:650}
+    .nav-button[aria-current="page"]{background:#eef7df;color:var(--ink)}
+    .workspace{padding:36px 40px}.workspace h1{margin:0;font-size:28px;letter-spacing:-.03em}
+    .view[hidden]{display:none}
+    @media(max-width:900px){.app-shell{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--border)}.nav-list{grid-template-columns:repeat(4,1fr);margin-top:20px}.workspace{padding:28px 20px}}
+    @media(max-width:620px){.safety-banner{padding-inline:16px}.workspace{padding:24px 16px}.nav-button{padding-inline:8px;font-size:12px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.001ms!important;animation-duration:.001ms!important}}
+  </style>
+</head>
+<body>
+  <div class="safety-banner" role="note">所有密钥与数据仅保存在当前浏览器中。请定期导出备份。</div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand">API 余额台</div>
+      <nav class="nav-list">
+        <button class="nav-button" type="button" data-view="overview" aria-current="page">总览</button>
+        <button class="nav-button" type="button" data-view="analytics">流水与趋势</button>
+        <button class="nav-button" type="button" data-view="logs">日志</button>
+        <button class="nav-button" type="button" data-view="settings">设置</button>
+      </nav>
+    </aside>
+    <main class="workspace">
+      <section class="view" id="view-overview"><h1>渠道总览</h1><div id="overview-content"></div></section>
+      <section class="view" id="view-analytics" hidden><h1>流水与趋势</h1></section>
+      <section class="view" id="view-logs" hidden><h1>日志</h1></section>
+      <section class="view" id="view-settings" hidden><h1>设置</h1></section>
+    </main>
+  </div>
+  <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script id="app-script">
+    'use strict';
+    const STORAGE_KEY = 'api_dashboard_v1';
+    const DEFAULT_STATE = Object.freeze({
+      version: 1,
+      settings: Object.freeze({
+        lowBalanceThreshold: 10,
+        dailySpendAlertThreshold: 20,
+        autoRefreshEnabled: false,
+        autoRefreshIntervalMinutes: 30,
+        defaultCurrency: 'USD',
+        cnyPerUsd: 7.2
+      }),
+      channels: Object.freeze([]),
+      balanceSnapshots: Object.freeze([]),
+      spendingRecords: Object.freeze([]),
+      logs: Object.freeze([])
+    });
+
+    function clone(value) {
+      return typeof structuredClone === 'function'
+        ? structuredClone(value)
+        : JSON.parse(JSON.stringify(value));
+    }
+
+    function createDefaultState() {
+      return clone(DEFAULT_STATE);
+    }
+
+    function safeNumber(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function normalizeState(input) {
+      const base = createDefaultState();
+      const source = input && typeof input === 'object' ? input : {};
+      const sourceSettings = source.settings && typeof source.settings === 'object' ? source.settings : {};
+      const interval = Math.max(5, safeNumber(sourceSettings.autoRefreshIntervalMinutes) ?? 30);
+      return {
+        ...base,
+        ...source,
+        version: 1,
+        settings: { ...base.settings, ...sourceSettings, autoRefreshIntervalMinutes: interval },
+        channels: Array.isArray(source.channels) ? source.channels : [],
+        balanceSnapshots: Array.isArray(source.balanceSnapshots) ? source.balanceSnapshots : [],
+        spendingRecords: Array.isArray(source.spendingRecords) ? source.spendingRecords : [],
+        logs: Array.isArray(source.logs) ? source.logs : []
+      };
+    }
+
+    globalThis.__API_DASHBOARD_TEST__ = { createDefaultState, normalizeState, safeNumber };
+  </script>
+</body>
+</html>
