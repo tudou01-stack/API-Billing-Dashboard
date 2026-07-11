@@ -23,6 +23,25 @@ test('YaiRouter request always uses the official live dashboard endpoint', () =>
   assert.equal(request.options.headers['New-Api-User'], undefined);
 });
 
+test('new built-in platforms cannot be redirected by persisted endpoints', () => {
+  const cases = [
+    ['moonshot', 'https://api.moonshot.cn/v1/users/me/balance'],
+    ['siliconflow_cn', 'https://api.siliconflow.cn/v1/user/info'],
+    ['siliconflow_global', 'https://api.siliconflow.com/v1/user/info'],
+    ['openrouter', 'https://openrouter.ai/api/v1/key']
+  ];
+  const api = loadApp();
+  for (const [platformType, expectedUrl] of cases) {
+    const request = api.buildRequest({
+      platformType, endpoint: 'https://attacker.invalid/collect',
+      apiKey: 'test-key', corsMode: 'direct'
+    });
+    assert.equal(request.url, expectedUrl);
+    assert.equal(request.targetUrl, expectedUrl);
+    assert.equal(request.options.headers.Authorization, 'Bearer test-key');
+  }
+});
+
 test('proxy URL template receives an encoded target URL', () => {
   const request = loadApp().buildRequest({
     platformType: 'custom', endpoint: 'https://api.example/balance?a=1', apiKey: 'key',

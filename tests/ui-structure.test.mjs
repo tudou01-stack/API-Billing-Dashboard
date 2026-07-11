@@ -27,6 +27,22 @@ test('channel form offers first-party YaiRouter configuration', () => {
   assert.match(html, /YaiRouter.*dashboard\/live.*balance/s);
 });
 
+test('channel form groups eight verified platform options', () => {
+  for (const group of ['官方模型平台', '模型与聚合平台', '通用接入']) {
+    assert.match(html, new RegExp(`<optgroup label="${group}">`));
+  }
+  for (const [value, label] of [
+    ['moonshot', 'Kimi / Moonshot 官方'],
+    ['siliconflow_cn', 'SiliconFlow 中国站'],
+    ['siliconflow_global', 'SiliconFlow 国际站'],
+    ['openrouter', 'OpenRouter（Key 额度）']
+  ]) {
+    assert.match(html, new RegExp(`<option value="${value}">${label}</option>`));
+  }
+  assert.equal((html.match(/<option value="(?:deepseek|moonshot|siliconflow_cn|siliconflow_global|yairouter|openrouter|oneapi|custom)">/g) || []).length, 8);
+  assert.match(html, /OpenRouter.*limit_remaining.*Key.*额度/s);
+});
+
 test('responsive and motion accessibility rules are present', () => {
   assert.match(html, /@media\(max-width:620px\)/);
   assert.match(html, /prefers-reduced-motion:reduce/);

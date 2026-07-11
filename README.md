@@ -1,6 +1,6 @@
 # API Billing Dashboard
 
-一个零依赖、纯前端、单文件运行的多 API 渠道余额与消费估算仪表盘。支持 DeepSeek 官方、YaiRouter/XAI、OneAPI/NewAPI 以及自定义 JSON 余额接口。
+一个零依赖、纯前端、单文件运行的多 API 渠道余额与消费估算仪表盘。内置 DeepSeek、Kimi/Moonshot、SiliconFlow 中国站与国际站、YaiRouter/XAI、OpenRouter Key 额度，并支持 OneAPI/NewAPI 和自定义 JSON 余额接口。
 
 ## 直接使用
 
@@ -9,14 +9,17 @@
 3. 点击“添加渠道”，选择平台类型并填写 API Key。
 4. 先点“测试连接”，确认地址、密钥和跨域方式；再点“刷新余额”写入第一条余额快照。
 
-使用 YaiRouter 时选择“YaiRouter / XAI”即可。程序会固定使用 `https://api.yairouter.com`，自动请求 `/dashboard/live` 并读取顶层 `balance`（USD）；不需要填写 JSON 取值路径。
+使用内置平台时只需选择对应平台并填写 API Key。程序会固定官方接口并自动读取余额字段；不需要填写 JSON 取值路径。
 
 所有渠道、密钥、余额快照、流水和日志都保存在当前浏览器的 `localStorage` 中，不会上传到本项目的服务器。清除浏览器站点数据会造成数据丢失，请定期导出完整备份。
 
 ## 主要功能
 
 - DeepSeek 官方余额解析，优先展示 USD，并保留附加币种信息。
+- Kimi/Moonshot 自动读取人民币可用余额。
+- SiliconFlow 中国站与国际站分别按 CNY、USD 读取总余额。
 - YaiRouter/XAI 自动请求 `/dashboard/live` 并读取 USD `balance`，无需手动配置 JSON 路径。
+- OpenRouter 读取当前 API Key 的剩余额度；未设置 Key 限额时会给出明确提示。
 - OneAPI/NewAPI 自动拼接 `/api/user/self`，支持 `New-Api-User` 与自定义额度换算比例。
 - 自定义接口支持 `data.balance`、`balances[0].total` 等 JSON 路径。
 - 单个/批量余额刷新和连接测试，批量并发固定为 3。
@@ -25,6 +28,23 @@
 - 7/30 天趋势、渠道消费占比、流水和日志筛选。
 - 完整备份导入导出、统计 CSV/JSON、日志 JSON/文本导出。
 - 响应式桌面/移动界面，无框架、无 CDN、无构建步骤。
+
+## 内置平台
+
+| 分类 | 平台选项 | 自动接口 | 自动字段 | 币种/含义 |
+|---|---|---|---|---|
+| 官方模型平台 | DeepSeek 官方 | `/user/balance` | `balance_infos` | 优先 USD |
+| 官方模型平台 | Kimi / Moonshot 官方 | `/v1/users/me/balance` | `data.available_balance` | CNY 可用余额 |
+| 模型与聚合平台 | SiliconFlow 中国站 | `/v1/user/info` | `data.totalBalance` | CNY 总余额 |
+| 模型与聚合平台 | SiliconFlow 国际站 | `/v1/user/info` | `data.totalBalance` | USD 总余额 |
+| 模型与聚合平台 | YaiRouter / XAI | `/dashboard/live` | `balance` | USD 余额 |
+| 模型与聚合平台 | OpenRouter（Key 额度） | `/api/v1/key` | `data.limit_remaining` | USD 单 Key 剩余额度 |
+| 通用接入 | OneAPI / NewAPI | `/api/user/self` | `data.quota` | 按配置比例换算 USD |
+| 通用接入 | 自定义接口 | 用户填写 | 用户填写 JSON 路径 | 用户指定币种 |
+
+接口契约已按公开资料核验：[Kimi 查询余额](https://platform.kimi.com/docs/api/balance)、[SiliconFlow 用户账户信息](https://docs.siliconflow.com/cn/api-reference/userinfo/get-user-info)、[OpenRouter Key 限额](https://openrouter.ai/docs/guides/overview/limits)。
+
+OpenRouter 选项显示的是当前 API Key 的限额余量，不是整个 OpenRouter 账户余额；如果 Key 没有设置限额，接口可能返回空值。OpenAI、Anthropic Claude、Google Gemini 以及主流国内云厂商通常要求管理员用量接口或云账单签名凭据，不能用普通模型 API Key 直接查询账户余额，因此没有作为内置余额平台伪装接入；特殊接口仍可使用“自定义接口”。
 
 ## “刷新余额”与“测试连接”
 

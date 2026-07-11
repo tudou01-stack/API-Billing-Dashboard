@@ -84,6 +84,53 @@ test('YaiRouter parser rejects a missing or non-numeric balance', () => {
   }
 });
 
+test('Moonshot parser reads the documented available CNY balance', () => {
+  const result = loadApp().parsePlatformBalance(
+    { platformType: 'moonshot' },
+    { status: true, data: { available_balance: '49.58894', voucher_balance: 46.58893, cash_balance: 3.00001 } }
+  );
+  assert.equal(result.balance, 49.58894);
+  assert.equal(result.currency, 'CNY');
+  assert.equal(result.isAvailable, true);
+});
+
+test('SiliconFlow parser uses total balance and region currency', () => {
+  const api = loadApp();
+  const payload = { code: 20000, status: true, data: { balance: '0.88', chargeBalance: '88.00', totalBalance: '88.88' } };
+  const china = api.parsePlatformBalance({ platformType: 'siliconflow_cn' }, payload);
+  const global = api.parsePlatformBalance({ platformType: 'siliconflow_global' }, payload);
+  assert.equal(china.balance, 88.88);
+  assert.equal(china.currency, 'CNY');
+  assert.equal(global.balance, 88.88);
+  assert.equal(global.currency, 'USD');
+});
+
+test('OpenRouter parser reads the documented per-key remaining quota', () => {
+  const result = loadApp().parsePlatformBalance(
+    { platformType: 'openrouter' },
+    { data: { label: 'test-key', limit: 20, limit_remaining: '12.5', usage: 7.5 } }
+  );
+  assert.equal(result.balance, 12.5);
+  assert.equal(result.currency, 'USD');
+});
+
+test('new platform parsers reject failed or missing balance responses', () => {
+  const api = loadApp();
+  const cases = [
+    [{ platformType: 'moonshot' }, { status: false, message: 'denied' }, 'api'],
+    [{ platformType: 'moonshot' }, { status: true, data: {} }, 'parse'],
+    [{ platformType: 'siliconflow_cn' }, { status: false, message: 'denied' }, 'api'],
+    [{ platformType: 'siliconflow_global' }, { status: true, data: { totalBalance: 'invalid' } }, 'parse'],
+    [{ platformType: 'openrouter' }, { data: { limit_remaining: null } }, 'parse']
+  ];
+  for (const [channel, payload, expectedKind] of cases) {
+    assert.throws(
+      () => api.parsePlatformBalance(channel, payload),
+      error => error.kind === expectedKind
+    );
+  }
+});
+
 test('custom parser resolves object and array JSON path', () => {
   const api = loadApp();
   const payload = { data: { balances: [{ total: '12.40' }] } };
