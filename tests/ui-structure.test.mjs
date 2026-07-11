@@ -41,3 +41,9 @@ test('production script never assigns dynamic content through innerHTML', () => 
   assert.doesNotMatch(html, /document\.write\s*\(/);
   assert.doesNotMatch(html, /\beval\s*\(/);
 });
+
+test('in-app help explains refresh semantics and Worker URL template', () => {
+  assert.match(html, /刷新余额.*写入余额快照/s);
+  assert.match(html, /测试连接.*不会写入快照/s);
+  assert.match(html, /\?url=\{url\}/);
+});

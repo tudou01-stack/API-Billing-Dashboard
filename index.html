@@ -101,6 +101,7 @@
           </form>
           <div>
             <section class="content-panel"><div class="settings-section"><h2>数据与备份</h2><p class="settings-note">完整备份包含明文 API Key。请仅保存在可信设备，不要上传到公开仓库。</p><div class="data-actions"><button class="btn" id="export-backup" type="button">导出完整备份</button><button class="btn" id="import-backup" type="button">导入完整备份</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div></section>
+            <section class="content-panel" style="margin-top:20px"><div class="settings-section"><h2>使用帮助</h2><p class="settings-note"><strong>刷新余额</strong>：成功取得数值后写入余额快照，并从第二次成功刷新开始估算消费。失败不会写入余额 0。</p><p class="settings-note"><strong>测试连接</strong>：只检查地址、鉴权和返回结构，不会写入快照，也不会改变余额刷新状态。</p><p class="settings-note">自建 Worker 推荐格式：<code>https://worker.example/?url={url}</code>。优先直连，其次使用自己的 Worker，公共代理只用于低风险测试 Key。</p></div></section>
             <section class="content-panel danger-zone" style="margin-top:20px"><div class="settings-section"><h2>重置统计</h2><p class="settings-note">清空快照和流水，保留渠道、设置与日志。建议先导出备份。</p><button class="btn btn-danger" id="reset-statistics" type="button">清空统计数据</button></div></section>
           </div>
         </div>
