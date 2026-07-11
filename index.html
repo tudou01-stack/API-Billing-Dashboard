@@ -115,7 +115,7 @@
         <input type="hidden" id="channel-id">
         <div class="form-grid">
           <div class="field"><label for="channel-name">渠道名称</label><input id="channel-name" name="name" maxlength="30" required autocomplete="off"><small>1–30 个字符；重复名称会提示。</small></div>
-          <div class="field"><label for="channel-platform">平台类型</label><select id="channel-platform" name="platformType"><option value="deepseek">DeepSeek 官方</option><option value="oneapi">OneAPI / NewAPI</option><option value="custom">自定义接口</option></select></div>
+          <div class="field"><label for="channel-platform">平台类型</label><select id="channel-platform" name="platformType"><option value="deepseek">DeepSeek 官方</option><option value="yairouter">YaiRouter / XAI</option><option value="oneapi">OneAPI / NewAPI</option><option value="custom">自定义接口</option></select></div>
           <div class="field full"><label for="channel-endpoint">接口地址</label><input id="channel-endpoint" name="endpoint" type="url" required><small id="endpoint-help">DeepSeek 官方地址固定，无需修改。</small></div>
           <div class="field full"><label for="channel-api-key">API Key</label><div class="input-with-action"><input id="channel-api-key" name="apiKey" type="password" required autocomplete="off"><button id="toggle-api-key" type="button" aria-label="显示 API Key">查看</button></div></div>
           <div class="field conditional" id="custom-path-field" hidden><label for="channel-custom-path">JSON 取值路径</label><input id="channel-custom-path" name="customJsonPath" placeholder="data.balance"><small>支持对象属性与数组索引，例如 balance_infos[0].total_balance。</small></div>
@@ -240,6 +240,8 @@
       let target;
       if (channel.platformType === 'deepseek') {
         target = 'https://api.deepseek.com/user/balance';
+      } else if (channel.platformType === 'yairouter') {
+        target = 'https://api.yairouter.com/dashboard/live';
       } else if (channel.platformType === 'oneapi') {
         const root = requireHttpUrl(channel.endpoint, '站点地址');
         root.pathname = root.pathname.replace(/\/+$/, '') + '/api/user/self';
@@ -290,6 +292,11 @@
         const ratio = safeNumber(channel.quotaPerUsd) ?? 500000;
         if (quota === null || ratio <= 0) throw new DashboardError('parse', '无法从 OneAPI 返回数据中解析额度');
         return { balance: quota / ratio, currency: 'USD', isAvailable: true, additionalBalances: [] };
+      }
+      if (channel.platformType === 'yairouter') {
+        const balance = safeNumber(payload.balance);
+        if (balance === null) throw new DashboardError('parse', '无法从 YaiRouter 返回数据中解析余额');
+        return { balance, currency: 'USD', isAvailable: true, additionalBalances: [] };
       }
       const value = safeNumber(resolveJsonPath(payload, channel.customJsonPath));
       if (value === null) throw new DashboardError('parse', '无法从返回数据中解析余额，请检查取值路径');
@@ -678,7 +685,7 @@
     }
 
     function platformName(type) {
-      return ({ deepseek: 'DeepSeek 官方', oneapi: 'OneAPI / NewAPI', custom: '自定义接口' })[type] || '未知平台';
+      return ({ deepseek: 'DeepSeek 官方', yairouter: 'YaiRouter / XAI', oneapi: 'OneAPI / NewAPI', custom: '自定义接口' })[type] || '未知平台';
     }
 
     function showToast(message, kind = 'info') {
@@ -926,11 +933,15 @@
       const platform = document.getElementById('channel-platform').value;
       const endpoint = document.getElementById('channel-endpoint');
       const isDeepSeek = platform === 'deepseek';
-      endpoint.disabled = isDeepSeek;
+      const isYaiRouter = platform === 'yairouter';
+      endpoint.disabled = isDeepSeek || isYaiRouter;
       if (isDeepSeek) endpoint.value = 'https://api.deepseek.com/user/balance';
+      if (isYaiRouter) endpoint.value = 'https://api.yairouter.com';
       document.getElementById('endpoint-help').textContent = isDeepSeek
         ? 'DeepSeek 官方地址固定，无需修改。'
-        : platform === 'oneapi' ? '只填写站点根地址，程序会自动拼接 /api/user/self。' : '填写返回 JSON 的完整余额接口地址。';
+        : isYaiRouter
+          ? 'YaiRouter 会自动请求 /dashboard/live 并读取 balance，无需填写 JSON 路径。'
+          : platform === 'oneapi' ? '只填写站点根地址，程序会自动拼接 /api/user/self。' : '填写返回 JSON 的完整余额接口地址。';
       document.getElementById('custom-path-field').hidden = platform !== 'custom';
       document.getElementById('custom-currency-field').hidden = platform !== 'custom';
       document.getElementById('oneapi-user-field').hidden = platform !== 'oneapi';
@@ -971,7 +982,9 @@
       if (!apiKey) throw new DashboardError('config', '请填写 API Key');
       const endpoint = platformType === 'deepseek'
         ? 'https://api.deepseek.com/user/balance'
-        : document.getElementById('channel-endpoint').value.trim();
+        : platformType === 'yairouter'
+          ? 'https://api.yairouter.com'
+          : document.getElementById('channel-endpoint').value.trim();
       requireHttpUrl(endpoint, '接口地址');
       const customJsonPath = document.getElementById('channel-custom-path').value.trim();
       if (platformType === 'custom' && !customJsonPath) throw new DashboardError('config', '自定义接口必须填写 JSON 取值路径');

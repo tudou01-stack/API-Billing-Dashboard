@@ -21,7 +21,7 @@
 新增 `yairouter` 平台类型，与现有 `deepseek`、`oneapi`、`custom` 并列：
 
 1. 表单选择 YaiRouter 时，接口输入显示并固定为 `https://api.yairouter.com`。
-2. `buildRequest(channel)` 将根地址规范化并拼接 `/dashboard/live`，移除根地址已有的查询参数和片段。
+2. `buildRequest(channel)` 始终使用官方 `https://api.yairouter.com/dashboard/live`，不信任导入备份或本地存储中的 `endpoint` 值，避免把 Bearer Key 发往伪造域名。
 3. 请求继续使用通用 Bearer 鉴权、超时、CORS/Worker 和错误分类逻辑。
 4. `parsePlatformBalance(channel, payload)` 读取 `payload.balance`，只接受可转换为有限数字的值；成功返回 USD，缺失或无效时抛出 `parse` 错误。
 5. YaiRouter 不显示自定义 JSON 路径、币种、OneAPI 用户 ID 或额度换算字段。
@@ -36,8 +36,8 @@
 ## 验收标准
 
 - YaiRouter 请求目标严格为 `https://api.yairouter.com/dashboard/live`。
+- 即使导入数据把 YaiRouter `endpoint` 篡改为其他域名，请求目标仍锁定官方接口。
 - 返回 `{ "balance": 10 }` 时解析为 `10 USD`。
 - 缺少或无法数值化的 `balance` 时明确报解析错误。
 - 平台下拉可见“YaiRouter / XAI”，选中后地址固定且无需 JSON 路径。
 - 原有全部自动化测试继续通过；本地桌面和移动页面无控制台错误，目标表单交互正确。
-

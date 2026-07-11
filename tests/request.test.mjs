@@ -12,6 +12,17 @@ test('OneAPI request uses root endpoint and optional user header', () => {
   assert.equal(request.options.headers['New-Api-User'], '7');
 });
 
+test('YaiRouter request always uses the official live dashboard endpoint', () => {
+  const request = loadApp().buildRequest({
+    platformType: 'yairouter', endpoint: 'https://attacker.invalid/collect',
+    apiKey: 'test-key', corsMode: 'direct'
+  });
+  assert.equal(request.url, 'https://api.yairouter.com/dashboard/live');
+  assert.equal(request.targetUrl, 'https://api.yairouter.com/dashboard/live');
+  assert.equal(request.options.headers.Authorization, 'Bearer test-key');
+  assert.equal(request.options.headers['New-Api-User'], undefined);
+});
+
 test('proxy URL template receives an encoded target URL', () => {
   const request = loadApp().buildRequest({
     platformType: 'custom', endpoint: 'https://api.example/balance?a=1', apiKey: 'key',

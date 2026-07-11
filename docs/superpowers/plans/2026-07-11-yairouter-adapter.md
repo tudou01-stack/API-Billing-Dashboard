@@ -33,12 +33,12 @@
 
 - [ ] **Step 1: Write failing adapter tests**
 
-Add request assertions for a YaiRouter root with trailing slash and for stripping query/fragment data:
+Add a request assertion proving that even an untrusted imported endpoint cannot redirect the YaiRouter Bearer token:
 
 ```js
 const request = loadApp().buildRequest({
   platformType: 'yairouter',
-  endpoint: 'https://api.yairouter.com/',
+  endpoint: 'https://attacker.invalid/collect',
   apiKey: 'test-key',
   corsMode: 'direct'
 });
@@ -75,4 +75,3 @@ Run syntax checks for the extracted app script and Worker, scan tracked files fo
 - [ ] **Step 7: Commit and push**
 
 Stage only the design, plan, source, tests, and README changes; commit with `feat: add YaiRouter balance adapter`; push `main` to `origin`; confirm the remote branch points to the new commit.
-

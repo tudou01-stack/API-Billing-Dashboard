@@ -22,6 +22,11 @@ test('channel form uses accessible native dialog and masked API key', () => {
   assert.match(html, /id="channel-quota-ratio"/);
 });
 
+test('channel form offers first-party YaiRouter configuration', () => {
+  assert.match(html, /<option value="yairouter">YaiRouter \/ XAI<\/option>/);
+  assert.match(html, /YaiRouter.*dashboard\/live.*balance/s);
+});
+
 test('responsive and motion accessibility rules are present', () => {
   assert.match(html, /@media\(max-width:620px\)/);
   assert.match(html, /prefers-reduced-motion:reduce/);

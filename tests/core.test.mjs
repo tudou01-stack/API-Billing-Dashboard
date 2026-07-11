@@ -60,6 +60,30 @@ test('OneAPI parser converts quota by configured ratio', () => {
   assert.equal(result.currency, 'USD');
 });
 
+test('YaiRouter parser reads the top-level balance as USD', () => {
+  const api = loadApp();
+  for (const [rawBalance, expected] of [[10, 10], ['9.75', 9.75]]) {
+    const result = api.parsePlatformBalance(
+      { platformType: 'yairouter' },
+      { balance: rawBalance, credit_balance: [], daily_usage: {} }
+    );
+    assert.equal(result.balance, expected);
+    assert.equal(result.currency, 'USD');
+    assert.equal(result.isAvailable, true);
+    assert.deepEqual(Array.from(result.additionalBalances), []);
+  }
+});
+
+test('YaiRouter parser rejects a missing or non-numeric balance', () => {
+  const api = loadApp();
+  for (const payload of [{}, { balance: 'not-a-number' }, { balance: null }]) {
+    assert.throws(
+      () => api.parsePlatformBalance({ platformType: 'yairouter' }, payload),
+      error => error.kind === 'parse' && /YaiRouter/.test(error.message)
+    );
+  }
+});
+
 test('custom parser resolves object and array JSON path', () => {
   const api = loadApp();
   const payload = { data: { balances: [{ total: '12.40' }] } };

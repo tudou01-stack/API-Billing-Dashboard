@@ -1,6 +1,6 @@
 # API Billing Dashboard
 
-一个零依赖、纯前端、单文件运行的多 API 渠道余额与消费估算仪表盘。支持 DeepSeek 官方、OneAPI/NewAPI 以及自定义 JSON 余额接口。
+一个零依赖、纯前端、单文件运行的多 API 渠道余额与消费估算仪表盘。支持 DeepSeek 官方、YaiRouter/XAI、OneAPI/NewAPI 以及自定义 JSON 余额接口。
 
 ## 直接使用
 
@@ -9,11 +9,14 @@
 3. 点击“添加渠道”，选择平台类型并填写 API Key。
 4. 先点“测试连接”，确认地址、密钥和跨域方式；再点“刷新余额”写入第一条余额快照。
 
+使用 YaiRouter 时选择“YaiRouter / XAI”即可。程序会固定使用 `https://api.yairouter.com`，自动请求 `/dashboard/live` 并读取顶层 `balance`（USD）；不需要填写 JSON 取值路径。
+
 所有渠道、密钥、余额快照、流水和日志都保存在当前浏览器的 `localStorage` 中，不会上传到本项目的服务器。清除浏览器站点数据会造成数据丢失，请定期导出完整备份。
 
 ## 主要功能
 
 - DeepSeek 官方余额解析，优先展示 USD，并保留附加币种信息。
+- YaiRouter/XAI 自动请求 `/dashboard/live` 并读取 USD `balance`，无需手动配置 JSON 路径。
 - OneAPI/NewAPI 自动拼接 `/api/user/self`，支持 `New-Api-User` 与自定义额度换算比例。
 - 自定义接口支持 `data.balance`、`balances[0].total` 等 JSON 路径。
 - 单个/批量余额刷新和连接测试，批量并发固定为 3。
