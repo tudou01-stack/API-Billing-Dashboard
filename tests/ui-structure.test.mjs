@@ -47,3 +47,8 @@ test('in-app help explains refresh semantics and Worker URL template', () => {
   assert.match(html, /测试连接.*不会写入快照/s);
   assert.match(html, /\?url=\{url\}/);
 });
+
+test('brand and primary navigation use a consistent inline SVG icon family', () => {
+  assert.match(html, /class="brand-mark"/);
+  assert.equal((html.match(/class="nav-icon"/g) || []).length, 4);
+});

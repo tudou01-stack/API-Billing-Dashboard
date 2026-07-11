@@ -10,6 +10,21 @@ test('default state has stable version and settings', () => {
   assert.deepEqual(Array.from(state.channels), []);
 });
 
+test('safe number rejects null and blank values instead of coercing them to zero', () => {
+  const api = loadApp();
+  assert.equal(api.safeNumber(null), null);
+  assert.equal(api.safeNumber(''), null);
+  assert.equal(api.safeNumber('  '), null);
+  assert.equal(api.safeNumber('0'), 0);
+});
+
+test('duplicate channel check excludes the channel currently being saved', () => {
+  const api = loadApp();
+  const channels = [{ id: 'new-id', name: 'Alpha' }];
+  assert.equal(api.hasDuplicateChannelName(channels, 'Alpha', 'new-id'), false);
+  assert.equal(api.hasDuplicateChannelName(channels, 'Alpha', ''), true);
+});
+
 test('normalization enforces minimum refresh interval and array fields', () => {
   const state = loadApp().normalizeState({
     version: 1,

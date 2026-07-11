@@ -21,8 +21,8 @@
     .safety-banner{min-height:34px;background:var(--ink);color:#fff;padding:7px 24px;font-size:13px}
     .app-shell{display:grid;grid-template-columns:224px 1fr;min-height:calc(100vh - 34px)}
     .sidebar{background:#fff;border-right:1px solid var(--border);padding:28px 24px;display:flex;flex-direction:column;position:sticky;top:0;height:calc(100vh - 34px)}
-    .brand{font-size:18px;font-weight:750}.nav-list{display:grid;gap:8px;margin-top:32px}
-    .nav-button{border:0;background:transparent;text-align:left;border-radius:10px;padding:0 14px;color:var(--muted);font-size:13px;font-weight:650}
+    .brand{display:flex;align-items:center;gap:11px;font-size:18px;font-weight:750}.brand-mark{width:36px;height:36px;border-radius:11px;background:var(--primary);display:grid;place-items:center}.brand-mark svg{width:21px;height:21px}.nav-list{display:grid;gap:8px;margin-top:32px}
+    .nav-button{border:0;background:transparent;text-align:left;border-radius:10px;padding:0 14px;color:var(--muted);font-size:13px;font-weight:650;display:flex;align-items:center;gap:11px}.nav-icon{width:19px;height:19px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .nav-button[aria-current="page"]{background:#eef7df;color:var(--ink)}
     .workspace{padding:36px 40px;min-width:0}.workspace h1{margin:0;font-size:28px;line-height:1.2;letter-spacing:-.03em}.view{max-width:1180px;margin:0 auto}
     .view-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:26px}.view-subtitle{margin:8px 0 0;color:var(--muted);font-size:14px}
@@ -44,12 +44,12 @@
   <div class="safety-banner" role="note">所有密钥与数据仅保存在当前浏览器中。请定期导出备份。</div>
   <div class="app-shell">
     <aside class="sidebar" aria-label="主导航">
-      <div class="brand">API 余额台</div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12M8 20v-8h8v8M12 12v8"/></svg></span><span>API 余额台</span></div>
       <nav class="nav-list">
-        <button class="nav-button" type="button" data-view="overview" aria-current="page">总览</button>
-        <button class="nav-button" type="button" data-view="analytics">流水与趋势</button>
-        <button class="nav-button" type="button" data-view="logs">日志</button>
-        <button class="nav-button" type="button" data-view="settings">设置</button>
+        <button class="nav-button" type="button" data-view="overview" aria-current="page"><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>总览</span></button>
+        <button class="nav-button" type="button" data-view="analytics"><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18l5-6 4 3 8-10"/><path d="M18 5h2v2"/></svg><span>流水与趋势</span></button>
+        <button class="nav-button" type="button" data-view="logs"><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h10"/></svg><span>日志</span></button>
+        <button class="nav-button" type="button" data-view="settings"><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg><span>设置</span></button>
       </nav>
       <div class="sidebar-status"><strong>本地存储正常</strong><span id="storage-status">0 个渠道 · 尚未保存</span></div>
     </aside>
@@ -175,8 +175,14 @@
     }
 
     function safeNumber(value) {
+      if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return null;
       const number = Number(value);
       return Number.isFinite(number) ? number : null;
+    }
+
+    function hasDuplicateChannelName(channels, name, excludeId = '') {
+      const target = String(name || '').trim();
+      return channels.some(channel => channel.id !== excludeId && String(channel.name || '').trim() === target);
     }
 
     function normalizeState(input) {
@@ -992,6 +998,7 @@
         const values = readChannelForm();
         const id = document.getElementById('channel-id').value;
         const existing = appState.channels.find(item => item.id === id);
+        const duplicateName = hasDuplicateChannelName(appState.channels, values.name, id);
         if (values.corsMode === 'public_proxy') {
           const host = new URL(values.proxyUrl).host;
           const accepted = await askConfirm('公共代理密钥风险', `启用公共代理后，你的 API Key 会经过 ${host}。该第三方服务器可能记录或截获密钥，仅建议用于低风险测试 Key。是否继续？`, '理解风险并保存');
@@ -1015,7 +1022,7 @@
         saveState(appState);
         document.getElementById('channel-dialog').close();
         renderApp();
-        if (appState.channels.some(item => item.id !== id && item.name === values.name)) showToast('已保存；存在同名渠道，请注意区分');
+        if (duplicateName) showToast('已保存；存在同名渠道，请注意区分');
         else showToast('渠道已保存');
       } catch (error) { errorNode.textContent = error.message || '渠道配置无效'; }
     }
@@ -1296,7 +1303,7 @@
     }
 
     globalThis.__API_DASHBOARD_TEST__ = {
-      createDefaultState, normalizeState, safeNumber, resolveJsonPath,
+      createDefaultState, normalizeState, safeNumber, hasDuplicateChannelName, resolveJsonPath,
       buildRequest, parsePlatformBalance, fetchChannel, runPool, DashboardError,
       redactSecrets, appendLog, recordSuccessfulBalance, convertCurrency,
       summarize, buildTrendSeries, buildChannelShares, csvCell, serializeRecordsCsv,
