@@ -100,7 +100,155 @@
       };
     }
 
-    globalThis.__API_DASHBOARD_TEST__ = { createDefaultState, normalizeState, safeNumber };
+    class DashboardError extends Error {
+      constructor(kind, message, details = {}) {
+        super(message);
+        this.name = 'DashboardError';
+        this.kind = kind;
+        this.httpStatus = details.httpStatus ?? 0;
+        this.cause = details.cause;
+      }
+    }
+
+    function resolveJsonPath(data, path) {
+      if (!path || typeof path !== 'string') return undefined;
+      const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+      const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
+      let current = data;
+      for (const part of parts) {
+        if (forbidden.has(part) || current == null || !Object.prototype.hasOwnProperty.call(Object(current), part)) {
+          return undefined;
+        }
+        current = current[part];
+      }
+      return current;
+    }
+
+    function requireHttpUrl(value, label) {
+      let url;
+      try { url = new URL(String(value || '')); }
+      catch { throw new DashboardError('config', `${label}不是有效网址`); }
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new DashboardError('config', `${label}仅支持 HTTP 或 HTTPS`);
+      }
+      return url;
+    }
+
+    function buildRequest(channel) {
+      let target;
+      if (channel.platformType === 'deepseek') {
+        target = 'https://api.deepseek.com/user/balance';
+      } else if (channel.platformType === 'oneapi') {
+        const root = requireHttpUrl(channel.endpoint, '站点地址');
+        root.pathname = root.pathname.replace(/\/+$/, '') + '/api/user/self';
+        root.search = '';
+        root.hash = '';
+        target = root.toString();
+      } else {
+        target = requireHttpUrl(channel.endpoint, '接口地址').toString();
+      }
+      const headers = { Accept: 'application/json', Authorization: `Bearer ${channel.apiKey || ''}` };
+      if (channel.platformType === 'oneapi' && String(channel.newApiUserId || '').trim()) {
+        headers['New-Api-User'] = String(channel.newApiUserId).trim();
+      }
+      let url = target;
+      if (channel.corsMode && channel.corsMode !== 'direct') {
+        const proxy = requireHttpUrl(channel.proxyUrl, '代理地址').toString();
+        url = proxy.includes('{url}')
+          ? proxy.replace('{url}', encodeURIComponent(target))
+          : `${proxy}${proxy.includes('?') ? '&' : '?'}url=${encodeURIComponent(target)}`;
+      }
+      return { url, targetUrl: target, options: { method: 'GET', headers } };
+    }
+
+    function parsePlatformBalance(channel, payload) {
+      if (!payload || typeof payload !== 'object') {
+        throw new DashboardError('parse', '接口没有返回可识别的 JSON 数据');
+      }
+      if (channel.platformType === 'deepseek') {
+        const entries = Array.isArray(payload.balance_infos) ? payload.balance_infos : [];
+        const parsed = entries.map(item => ({
+          currency: String(item?.currency || '').toUpperCase(),
+          balance: safeNumber(item?.total_balance)
+        })).filter(item => item.currency && item.balance !== null);
+        if (!parsed.length) throw new DashboardError('parse', '无法从 DeepSeek 返回数据中解析余额');
+        const selected = parsed.find(item => item.currency === 'USD') || parsed[0];
+        return {
+          balance: selected.balance,
+          currency: selected.currency,
+          isAvailable: payload.is_available !== false,
+          additionalBalances: parsed.filter(item => item !== selected)
+        };
+      }
+      if (channel.platformType === 'oneapi') {
+        if (payload.success === false) {
+          throw new DashboardError('api', String(payload.message || '渠道返回失败状态'));
+        }
+        const quota = safeNumber(payload.data?.quota);
+        const ratio = safeNumber(channel.quotaPerUsd) ?? 500000;
+        if (quota === null || ratio <= 0) throw new DashboardError('parse', '无法从 OneAPI 返回数据中解析额度');
+        return { balance: quota / ratio, currency: 'USD', isAvailable: true, additionalBalances: [] };
+      }
+      const value = safeNumber(resolveJsonPath(payload, channel.customJsonPath));
+      if (value === null) throw new DashboardError('parse', '无法从返回数据中解析余额，请检查取值路径');
+      return {
+        balance: value,
+        currency: String(channel.customCurrency || 'USD').toUpperCase(),
+        isAvailable: true,
+        additionalBalances: []
+      };
+    }
+
+    async function fetchChannel(channel, fetchImpl = fetch, timeoutMs = 10000) {
+      const request = buildRequest(channel);
+      const controller = new AbortController();
+      let timedOut = false;
+      const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+      try {
+        const response = await fetchImpl(request.url, { ...request.options, signal: controller.signal });
+        const text = await response.text();
+        let payload = null;
+        if (text) {
+          try { payload = JSON.parse(text); }
+          catch { throw new DashboardError('parse', '接口返回的内容不是合法 JSON'); }
+        }
+        const ok = typeof response.ok === 'boolean'
+          ? response.ok
+          : response.status >= 200 && response.status < 300;
+        if (!ok) {
+          throw new DashboardError('http', payload?.message || `接口错误：${response.status}`, { httpStatus: response.status });
+        }
+        return { ...parsePlatformBalance(channel, payload), httpStatus: response.status, requestUrl: request.targetUrl };
+      } catch (error) {
+        if (error instanceof DashboardError) throw error;
+        if (timedOut || error?.name === 'AbortError') {
+          throw new DashboardError('network', '请求超时，请检查网络或代理设置', { cause: error });
+        }
+        throw new DashboardError('network', '网络异常或跨域请求被拦截，请检查代理设置', { cause: error });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function runPool(items, worker, concurrency = 3) {
+      const source = Array.from(items);
+      const results = new Array(source.length);
+      let cursor = 0;
+      async function runner() {
+        while (cursor < source.length) {
+          const index = cursor++;
+          try { results[index] = { status: 'fulfilled', value: await worker(source[index], index) }; }
+          catch (error) { results[index] = { status: 'rejected', reason: error }; }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), source.length) }, runner));
+      return results;
+    }
+
+    globalThis.__API_DASHBOARD_TEST__ = {
+      createDefaultState, normalizeState, safeNumber, resolveJsonPath,
+      buildRequest, parsePlatformBalance, fetchChannel, runPool, DashboardError
+    };
   </script>
 </body>
 </html>

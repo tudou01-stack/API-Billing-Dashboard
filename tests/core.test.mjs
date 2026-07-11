@@ -20,3 +20,37 @@ test('normalization enforces minimum refresh interval and array fields', () => {
   assert.deepEqual(Array.from(state.channels), []);
   assert.deepEqual(Array.from(state.logs), []);
 });
+
+test('DeepSeek parser prefers USD and preserves availability metadata', () => {
+  const api = loadApp();
+  const result = api.parsePlatformBalance(
+    { platformType: 'deepseek' },
+    { is_available: false, balance_infos: [
+      { currency: 'CNY', total_balance: '50.00' },
+      { currency: 'USD', total_balance: '7.25' }
+    ] }
+  );
+  assert.equal(result.balance, 7.25);
+  assert.equal(result.currency, 'USD');
+  assert.equal(result.isAvailable, false);
+  assert.deepEqual(Array.from(result.additionalBalances, item => ({ ...item })), [{ currency: 'CNY', balance: 50 }]);
+});
+
+test('OneAPI parser converts quota by configured ratio', () => {
+  const result = loadApp().parsePlatformBalance(
+    { platformType: 'oneapi', quotaPerUsd: 500000 },
+    { success: true, data: { quota: 250000 } }
+  );
+  assert.equal(result.balance, 0.5);
+  assert.equal(result.currency, 'USD');
+});
+
+test('custom parser resolves object and array JSON path', () => {
+  const api = loadApp();
+  const payload = { data: { balances: [{ total: '12.40' }] } };
+  assert.equal(api.resolveJsonPath(payload, 'data.balances[0].total'), '12.40');
+  assert.equal(api.parsePlatformBalance(
+    { platformType: 'custom', customJsonPath: 'data.balances[0].total', customCurrency: 'CNY' },
+    payload
+  ).balance, 12.4);
+});
