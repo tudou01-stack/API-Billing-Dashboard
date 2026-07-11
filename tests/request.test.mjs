@@ -53,3 +53,43 @@ test('task pool never exceeds the requested concurrency and preserves order', as
   assert.equal(peak, 3);
   assert.deepEqual(Array.from(results, item => item.value), [0, 2, 4, 6, 8, 10]);
 });
+
+test('failed refresh increments failures without creating a snapshot', async () => {
+  const api = loadApp();
+  const state = api.createDefaultState();
+  const channel = { id: 'c1', name: 'Main', platformType: 'deepseek', apiKey: 'bad', corsMode: 'direct', status: 'idle', consecutiveFailCount: 0 };
+  state.channels.push(channel);
+  const response = { ok: false, status: 500, text: async () => '{"message":"server error"}' };
+  const result = await api.performRefresh(state, channel, async () => response, 1000);
+  assert.equal(result.ok, false);
+  assert.equal(channel.consecutiveFailCount, 1);
+  assert.equal(channel.status, 'error');
+  assert.equal(state.balanceSnapshots.length, 0);
+  assert.equal(state.logs.at(-1).category, 'balance_refresh');
+});
+
+test('connection test maps 401 to invalid key without replacing refresh status', async () => {
+  const api = loadApp();
+  const state = api.createDefaultState();
+  const channel = { id: 'c1', name: 'Main', platformType: 'deepseek', apiKey: 'bad', corsMode: 'direct', status: 'ok', lastError: '' };
+  state.channels.push(channel);
+  const response = { ok: false, status: 401, text: async () => '{"message":"bad key"}' };
+  const result = await api.performConnectionTest(state, channel, async () => response, 1000);
+  assert.equal(result.ok, false);
+  assert.equal(channel.lastTestResult, 'invalid_key');
+  assert.equal(channel.status, 'ok');
+  assert.equal(state.balanceSnapshots.length, 0);
+});
+
+test('successful refresh records balance and resets failure counter', async () => {
+  const api = loadApp();
+  const state = api.createDefaultState();
+  const channel = { id: 'c1', name: 'Main', platformType: 'deepseek', apiKey: 'good', corsMode: 'direct', consecutiveFailCount: 3 };
+  state.channels.push(channel);
+  const response = { ok: true, status: 200, text: async () => JSON.stringify({ is_available: true, balance_infos: [{ currency: 'USD', total_balance: '9.50' }] }) };
+  const result = await api.performRefresh(state, channel, async () => response, 1000);
+  assert.equal(result.ok, true);
+  assert.equal(channel.consecutiveFailCount, 0);
+  assert.equal(channel.lastBalance, 9.5);
+  assert.equal(api.shouldSkipAutoRefresh({ consecutiveFailCount: 3 }), true);
+});
