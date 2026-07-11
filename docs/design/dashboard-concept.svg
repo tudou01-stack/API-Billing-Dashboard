@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#17201d" flood-opacity=".06"/>
+    </filter>
+    <style>
+      .ui{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#17201d}
+      .muted{fill:#66706c}.tiny{font-size:12px;font-weight:650;letter-spacing:.02em}.body{font-size:14px;font-weight:450}.control{font-size:13px;font-weight:650}.section{font-size:18px;font-weight:700}.title{font-size:28px;font-weight:700;letter-spacing:-.03em}.metric{font-size:30px;font-weight:720;letter-spacing:-.025em}.mono{font-variant-numeric:tabular-nums}
+    </style>
+  </defs>
+  <rect width="1440" height="1000" fill="#f2f4f3"/>
+  <rect width="1440" height="34" fill="#17201d"/>
+  <circle cx="26" cy="17" r="5" fill="#b8ea63"/>
+  <text class="ui body" x="40" y="22" fill="#fff">所有密钥与数据仅保存在当前浏览器中。请定期导出备份。</text>
+  <rect x="0" y="34" width="224" height="966" fill="#fff"/>
+  <line x1="224" y1="34" x2="224" y2="1000" stroke="#dde2df"/>
+  <rect x="28" y="70" width="34" height="34" rx="10" fill="#b8ea63"/>
+  <path d="M38 93V82l7-4 7 4v11M42 93v-7h6v7" fill="none" stroke="#17201d" stroke-width="1.8" stroke-linejoin="round"/>
+  <text class="ui section" x="74" y="92">API 余额台</text>
+  <rect x="12" y="138" width="4" height="40" rx="2" fill="#8bc53f"/>
+  <rect x="24" y="138" width="176" height="40" rx="10" fill="#eef7df"/>
+  <g fill="none" stroke="#17201d" stroke-width="1.7"><rect x="40" y="150" width="8" height="7" rx="1"/><rect x="51" y="150" width="8" height="7" rx="1"/><rect x="40" y="160" width="8" height="7" rx="1"/><rect x="51" y="160" width="8" height="7" rx="1"/></g>
+  <text class="ui control" x="72" y="163">总览</text>
+  <g class="ui control muted"><text x="72" y="215">流水与趋势</text><text x="72" y="267">日志</text><text x="72" y="319">设置</text></g>
+  <g fill="none" stroke="#66706c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M40 219l5-6 5 3 8-9"/><path d="M40 262h18M40 268h14M40 274h11"/><path d="M41 314h17M45 309v10M53 309v10"/></g>
+  <rect x="24" y="888" width="176" height="78" rx="14" fill="#f2f4f3"/>
+  <circle cx="46" cy="912" r="8" fill="#dcefc0"/><path d="M46 907v6M46 916v.2" stroke="#497321" stroke-width="1.6" stroke-linecap="round"/>
+  <text class="ui tiny" x="62" y="916">本地存储正常</text><text class="ui tiny muted" x="40" y="942">3 个渠道 · 刚刚保存</text>
+
+  <g transform="translate(264 72)">
+    <text class="ui title" x="0" y="28">渠道总览</text><text class="ui body muted" x="0" y="54">统一以 USD 估算</text>
+    <rect x="786" y="0" width="118" height="44" rx="10" fill="#fff" stroke="#dde2df"/><text class="ui control" x="822" y="27">全部测试</text>
+    <circle cx="808" cy="22" r="6" fill="none" stroke="#17201d" stroke-width="1.6"/><path d="M808 13v3M808 28v3M799 22h3M814 22h3" stroke="#17201d" stroke-width="1.4"/>
+    <rect x="916" y="0" width="118" height="44" rx="10" fill="#fff" stroke="#dde2df"/><text class="ui control" x="952" y="27">全部刷新</text>
+    <path d="M939 17a7 7 0 1 0 1 9M939 17v5h5" fill="none" stroke="#17201d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1046" y="0" width="130" height="44" rx="10" fill="#b8ea63"/><text class="ui control" x="1082" y="27">添加渠道</text><path d="M1066 16v12M1060 22h12" stroke="#17201d" stroke-width="1.8" stroke-linecap="round"/>
+
+    <rect x="0" y="86" width="1176" height="146" rx="18" fill="#fff" filter="url(#shadow)"/>
+    <line x1="294" y1="110" x2="294" y2="208" stroke="#dde2df"/><line x1="588" y1="110" x2="588" y2="208" stroke="#dde2df"/><line x1="882" y1="110" x2="882" y2="208" stroke="#dde2df"/>
+    <g class="ui tiny muted"><text x="28" y="120">总余额</text><text x="322" y="120">累计花费</text><text x="616" y="120">今日花费</text><text x="910" y="120">本月花费</text></g>
+    <g class="ui metric mono"><text x="28" y="169">$ 184.20</text><text x="322" y="169">$ 36.87</text><text x="616" y="169">$ 2.41</text><text x="910" y="169">$ 18.64</text></g>
+    <g class="ui tiny"><text x="28" y="197" fill="#1e8a5a">3 个渠道可用</text><text x="322" y="197" class="muted">余额差值估算</text><text x="616" y="197" fill="#1e8a5a">低于提醒阈值</text><text x="910" y="197" class="muted">7 月累计</text></g>
+
+    <text class="ui section" x="0" y="282">渠道</text><text class="ui tiny muted" x="62" y="282">3</text>
+    <rect x="0" y="306" width="572" height="250" rx="18" fill="#fff" filter="url(#shadow)"/>
+    <rect x="0" y="306" width="5" height="250" rx="2.5" fill="#1e8a5a"/>
+    <circle cx="34" cy="342" r="14" fill="#eef7df"/><text class="ui control" x="29" y="347">D</text>
+    <text class="ui section" x="58" y="347">DeepSeek 主账户</text><text class="ui tiny muted" x="58" y="370">DEEPSEEK 官方</text>
+    <circle cx="476" cy="344" r="5" fill="#1e8a5a"/><text class="ui tiny" x="489" y="348" fill="#1e8a5a">正常</text>
+    <text class="ui metric mono" x="28" y="425">$ 126.40</text><text class="ui body muted" x="194" y="423">USD</text>
+    <text class="ui tiny muted" x="28" y="452">最近更新  14:32:08</text><text class="ui tiny muted" x="334" y="452">连接  328ms</text>
+    <line x1="24" y1="478" x2="548" y2="478" stroke="#dde2df"/>
+    <g class="ui control"><text x="32" y="521">刷新余额</text><text x="156" y="521">测试连接</text><text x="280" y="521">编辑</text><text x="388" y="521">记一笔</text></g>
+
+    <rect x="604" y="306" width="572" height="250" rx="18" fill="#fff" filter="url(#shadow)"/>
+    <rect x="604" y="306" width="5" height="250" rx="2.5" fill="#b56a16"/>
+    <circle cx="638" cy="342" r="14" fill="#edf2fc"/><text class="ui control" x="633" y="347">N</text>
+    <text class="ui section" x="662" y="347">North API</text><text class="ui tiny muted" x="662" y="370">ONEAPI / NEWAPI</text>
+    <circle cx="1080" cy="344" r="5" fill="#b56a16"/><text class="ui tiny" x="1093" y="348" fill="#9a5712">低余额</text>
+    <text class="ui metric mono" x="632" y="425">$ 7.80</text><text class="ui body muted" x="750" y="423">USD</text>
+    <text class="ui tiny muted" x="632" y="452">最近更新  14:31:44</text><text class="ui tiny muted" x="938" y="452">连接  612ms</text>
+    <line x1="628" y1="478" x2="1152" y2="478" stroke="#dde2df"/>
+    <g class="ui control"><text x="636" y="521">刷新余额</text><text x="760" y="521">测试连接</text><text x="884" y="521">编辑</text><text x="992" y="521">记一笔</text></g>
+
+    <rect x="0" y="580" width="1176" height="252" rx="18" fill="#fff"/>
+    <text class="ui section" x="28" y="620">近 7 天消费</text><text class="ui tiny muted" x="1060" y="620">共 $ 8.94</text>
+    <line x1="56" y1="772" x2="1128" y2="772" stroke="#dde2df"/><line x1="56" y1="672" x2="56" y2="772" stroke="#dde2df"/>
+    <path d="M56 750C130 741 186 718 234 728S354 750 414 704 528 692 592 714 710 760 770 720 884 675 944 694 1050 650 1128 666" fill="none" stroke="#8bc53f" stroke-width="3" stroke-linecap="round"/>
+    <g class="ui tiny muted"><text x="48" y="800">07/05</text><text x="220" y="800">07/06</text><text x="392" y="800">07/07</text><text x="564" y="800">07/08</text><text x="736" y="800">07/09</text><text x="908" y="800">07/10</text><text x="1082" y="800">07/11</text></g>
+  </g>
+</svg>
